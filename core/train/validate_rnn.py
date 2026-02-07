@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-def validate(model, dataloader, criterion, device, Config):
+def validate_one_epoch(model, dataloader, criterion, device, Config):
     """
     Validate model
     
@@ -25,6 +25,7 @@ def validate(model, dataloader, criterion, device, Config):
                 logits = output
             
             loss = criterion(logits, labels)
+            total_loss += loss.item()
             # predictions (threshold at 0.5)
             predictions = (torch.sigmoid(logits) > 0.5).float()
             
@@ -33,20 +34,4 @@ def validate(model, dataloader, criterion, device, Config):
     
     # Calculate average loss
     avg_loss = total_loss / len(dataloader)
-    
-    # Calculate metrics (accuracy, sensitivity, specificity)
-    all_predictions = np.vstack(all_predictions)  # (N, 5)
-    all_labels = np.vstack(all_labels)  # (N, 5)
-
-    for i, class_name in enumerate(Config.CLASS_NAME):
-        y_true = all_labels[:, i]
-        y_pred = all_predictions[:, i]
-
-        tp = ((y_true == 1) & (y_pred == 1)).sum()
-        tn = ((y_true == 0) & (y_pred == 0)).sum()
-        fp = ((y_true == 0) & (y_pred == 1)).sum()
-        fn = ((y_true == 1) & (y_pred == 0)).sum()
-        
-            
-    metrics = {}
     
