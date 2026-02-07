@@ -12,33 +12,6 @@ from torch.utils.data import Dataset, DataLoader
 import pickle
 import os
 
-class ECGSignalDataset(Dataset):
-    """PyTorch Dataset for PTB-XL ECG data"""
-    
-    def __init__(self, data, labels, transform=None):
-        """
-        Args:
-            data: ECG signals (N, leads, signal_length) or (N, signal_images)
-            labels: Multi-label targets (N, num_classes)
-            transform: Optional transform to apply
-        """
-        # data can be either raw signals or precomputed images depending on the model 
-        self.data = np.array(data, dtype=np.float32)
-        self.labels = np.array(labels, dtype=np.float32)
-        self.transform = transform
-    
-    def __len__(self):
-        return len(self.data)
-    
-    def __getitem__(self, idx):
-        signal = self.data[idx]
-        label = self.labels[idx]
-        
-        if self.transform:
-            signal = self.transform(signal)
-        
-        return signal, label
-
 
 class PTBXLProcessor:
     """Load and preprocess PTB-XL dataset"""
@@ -181,28 +154,6 @@ class PTBXLProcessor:
         }
 
 
-def create_dataloaders(filepath, batch_size=32, shuffle = False, num_workers=4):
-    """Create PyTorch DataLoaders"""
-    
-    # Load processed data
-    X_split = np.load(filepath)
-    y_split = np.load(filepath)
-    
-    # Create datasets
-    dataset = ECGSignalDataset(X_split, y_split)
-    
-    # Create dataloaders
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-        pin_memory=True
-    )
-    
-    return loader
-
-
 if __name__ == "__main__":
     # Example usage
     DATA_PATH = "X:\ecg_fm\data"
@@ -211,13 +162,4 @@ if __name__ == "__main__":
     processor = PTBXLProcessor(DATA_PATH, sampling_rate=100)
     data = processor.preprocess()
     
-    # Create dataloaders
-    train_loader, val_loader, test_loader = create_dataloaders(batch_size=32)
-    
-    # Test dataloader
-    for signals, labels in train_loader:
-        print(f"Batch shape: {signals.shape}")  # (batch, 3, 1000)
-        print(f"Labels shape: {labels.shape}")  # (batch, 4)
-        break
-    
-    print("\nData loading pipeline ready!")
+    print("\nData loading and processing done!")
