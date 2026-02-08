@@ -5,8 +5,8 @@ Combines RNN block + optional Attention + FC layers
 
 import torch
 import torch.nn as nn
-from rnn_block import RNN_BLOCK, FullyConnected
-from attention import AdditiveAttention, SelfAttention
+from .rnn_block import RNN_BLOCK, FullyConnected
+from .attention import AdditiveAttention, SelfAttention
 
 
 class ECGModel(nn.Module):

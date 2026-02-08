@@ -1,0 +1,59 @@
+import torch
+import torch.nn as nn
+
+
+# ============= VGG Block =============
+class VGGBlock(nn.Module):
+    """
+    VGG-style block: multiple Conv layers + pooling
+    """
+    def __init__(self, in_channels, out_channels, num_convs):
+        super(VGGBlock, self).__init__()
+        
+        # TODO: Create sequential container
+        # Add num_convs Conv2D layers with BatchNorm and ReLU
+        # Add MaxPool2d at the end
+        
+        pass
+    
+    def forward(self, x):
+        # TODO: Forward through sequential block
+        pass
+
+
+# ============= VGGNet =============
+class VGGNet(nn.Module):
+    """
+    VGG-style network for ECG images
+    Uses VGG blocks with batch normalization
+    """
+    def __init__(self, num_classes=4, dropout=0.5):
+        super(VGGNet, self).__init__()
+        
+        # TODO: Define VGG blocks
+        # Block 1: 3 → 16, 2 convs
+        # Block 2: 16 → 32, 2 convs
+        # Block 3: 32 → 64, 3 convs
+        # Block 4: 64 → 128, 3 convs
+        # Block 5: 128 → 128, 3 convs
+        
+        # TODO: Adaptive pooling
+        
+        # TODO: Classifier
+        
+        pass
+    
+    def forward(self, x):
+        """
+        Args:
+            x: (batch, 3, 224, 224)
+        Returns:
+            logits: (batch, num_classes)
+        """
+        # TODO: VGG blocks
+        
+        # TODO: Adaptive pooling and flatten
+        
+        # TODO: Classifier
+        
+        pass

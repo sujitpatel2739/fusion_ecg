@@ -104,28 +104,65 @@ class ECGImageGenerator:
         return batch_idx + 1 
 
 
+def load_signals_data(data_dir, batch_size):
+    """
+    Load signals saved as batch .npy files or a single .npy file.
+
+    Args:
+        data_dir: Path to a directory containing batch_*.npy files OR a single .npy file path.
+        batch_size: Optional (kept for compatibility).
+
+    Returns:
+        A single numpy array with all signals concatenated along axis=0.
+    """
+    # If a single .npy file path was provided, load and return it
+    if os.path.isfile(data_dir) and data_dir.lower().endswith('.npy'):
+        return np.load(data_dir)
+
+    # Otherwise expect a directory containing batch files
+    if not os.path.isdir(data_dir):
+        raise FileNotFoundError(f"Signals path not found: {data_dir}")
+
+    files = sorted([f for f in os.listdir(data_dir) if f.endswith('.npy')])
+    arrays = []
+    for fname in files:
+        path = os.path.join(data_dir, fname)
+        try:
+            arr = np.load(path)
+        except Exception:
+            # skip unreadable files but continue
+            continue
+        arrays.append(arr)
+
+    if not arrays:
+        return np.zeros((0,))
+
+    # Concatenate along the sample axis
+    return np.concatenate(arrays, axis=0)
+
 # ============= MAIN EXECUTION ============================================================
 
-X_TRAIN_SIGNAL_PATH = 'data/signals/X_train.npy'
-X_TRAIN_IMAGES_PATH = 'data/images/train'
-PARTITION = 'train'
+SIGNALS_DIR = 'data/signals/test'
+X_IMAGES_PATH = 'data/images/test'
+PARTITION = 'test'
+BATCH_SIZE = 32
 
-# Load the train signals (No need to load labels)
-print("Loading training data...")
-X_train_signal = np.load(X_TRAIN_SIGNAL_PATH)
-print(f"Loaded {X_train_signal.shape[0]} training signals with shape {X_train_signal.shape}")
+# Load the signals (No need to load labels)
+print("Loading data...")
+X_signals = load_signals_data(SIGNALS_DIR, batch_size=BATCH_SIZE)
+print(f"Loaded {X_signals.shape[0]} training signals with shape {X_signals.shape}")
 
 # Create images from signals
-image_generator = ECGImageGenerator(image_size=224, method='summation', batch_size=32)
+image_generator = ECGImageGenerator(image_size=224, method='summation', batch_size=BATCH_SIZE)
 
 # Generate and save images
 num_batches = image_generator(
-    data=X_train_signal, 
-    save_dir=X_TRAIN_IMAGES_PATH,
+    data=X_signals,
+    save_dir=X_IMAGES_PATH,
     partition=PARTITION
 )
 
 print(f"\nImage generation complete!")
 print(f"  Total batches: {num_batches}")
 print(f"  Samples per batch: {image_generator.batch_size}")
-print(f"  Last batch size: {X_train_signal.shape[0] % image_generator.batch_size or image_generator.batch_size}")
+print(f"  Last batch size: {X_signals.shape[0] % image_generator.batch_size or image_generator.batch_size}")

@@ -16,14 +16,16 @@ import os
 class PTBXLProcessor:
     """Load and preprocess PTB-XL dataset"""
     
-    def __init__(self, data_path, sampling_rate=100):
+    def __init__(self, data_path, sampling_rate=100, batch_size=32):
         """
         Args:
             data_path: Path to PTB-XL dataset
             sampling_rate: Target sampling rate (100 or 500 Hz)
+            batch_size: Batch size for saving signals
         """
         self.data_path = data_path
         self.sampling_rate = sampling_rate
+        self.batch_size = batch_size
         self.leads = [0, 1, 7]  # I, II, V2 as per paper
         
         # 4 CVD classes from paper
@@ -60,6 +62,39 @@ class PTBXLProcessor:
                 labels[idx, 4] = 1
         
         return labels
+    
+    def save_in_batches(self, data, split_name):
+        """
+        Save signals and labels in batches to organized folder structure.
+        
+        Args:
+            data: Signal data array (N, channels, time)
+            labels: Label data array (N, num_classes)
+            split_name: 'train', 'validation', or 'test'
+        """
+        # Create directories
+        signals_dir = os.path.join('data', 'signals', split_name)
+        # labels_dir = os.path.join('data', 'labels', split_name)
+        os.makedirs(signals_dir, exist_ok=True)
+        # os.makedirs(labels_dir, exist_ok=True)
+        
+        # Calculate number of batches
+        num_samples = len(data)
+        num_batches = (num_samples + self.batch_size - 1) // self.batch_size
+        
+        print(f"Saving {split_name} data in {num_batches} batches (batch_size={self.batch_size})")
+        
+        # Save batches
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * self.batch_size
+            end_idx = min(start_idx + self.batch_size, num_samples)
+            
+            batch_data = data[start_idx:end_idx]
+            # batch_labels = labels[start_idx:end_idx]
+            
+            # Save batch files
+            np.save(os.path.join(signals_dir, f'batch_{batch_idx}.npy'), batch_data)
+            # np.save(os.path.join(labels_dir, f'batch_{batch_idx}.npy'), batch_labels)
     
     def preprocess(self):
         """Main preprocessing pipeline"""
@@ -128,16 +163,16 @@ class PTBXLProcessor:
         for i, cls in enumerate(self.classes):
             print(f"  {cls}: {y_train[:, i].sum():.0f} ({y_train[:, i].mean()*100:.1f}%)")
         
-        # Save processed data
-        print("\nSaving processed data...")
-        os.makedirs('processed', exist_ok=True)
+        # Save processed data in batches
+        # print("\nSaving processed data...")
+        # self.save_in_batches(X_train, 'train')
+        # self.save_in_batches(X_val, 'validation')
+        # self.save_in_batches(X_test, 'test')
         
-        np.save('processed/X_train.npy', X_train)
-        np.save('processed/y_train.npy', y_train)
-        np.save('processed/X_val.npy', X_val)
-        np.save('processed/y_val.npy', y_val)
-        np.save('processed/X_test.npy', X_test)
-        np.save('processed/y_test.npy', y_test)
+        # Save labels split wise
+        np.save(f"{self.data_path}/labels/y_train.py", y_train)
+        np.save(f"{self.data_path}/labels/y_val.py", y_val)
+        np.save(f"{self.data_path}/labels/y_test.py", y_test)
         
         os.makedirs('saved', exist_ok=True)
         
@@ -159,7 +194,7 @@ if __name__ == "__main__":
     DATA_PATH = "X:\ecg_fm\data"
     
     # Preprocess data
-    processor = PTBXLProcessor(DATA_PATH, sampling_rate=100)
+    processor = PTBXLProcessor(DATA_PATH, sampling_rate=100, batch_size=32)
     data = processor.preprocess()
     
     print("\nData loading and processing done!")

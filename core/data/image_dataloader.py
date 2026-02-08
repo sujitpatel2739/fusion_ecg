@@ -70,8 +70,8 @@ class ECGImageDataset(Dataset):
             image = image / 255.0
         
         # Convert to tensors
-        image = torch.FloatTensor(image)
-        label = torch.FloatTensor(label)
+        image = torch.from_numpy(image).float()
+        label = torch.from_numpy(label).float()
         
         # Apply transforms if any
         if self.transform:
@@ -114,7 +114,7 @@ def create_image_dataloaders(
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory= torch.cuda.is_available()
     )
     
     return loader
