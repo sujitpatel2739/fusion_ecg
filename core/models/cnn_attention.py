@@ -54,7 +54,7 @@ class SpatialAttention(nn.Module):
         super(SpatialAttention, self).__init__()
         
         padding = (kernel_size - 1) // 2
-        self.conv = nn.Conv2d(in_channels, 1, kernel_size=kernel_size, padding=padding, bias=False)
+        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=padding, bias=False)
         self.sigmoid = nn.Sigmoid()
     
     def forward(self, x):
