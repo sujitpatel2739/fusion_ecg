@@ -3,7 +3,7 @@ Test script for all RNN models
 """
 
 import torch
-from model import (
+from core.models.rnn import (
     create_gru, create_bigru, create_lstm, 
     create_bilstm, create_bigru_attention
 )

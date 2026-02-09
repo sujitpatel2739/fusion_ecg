@@ -1,6 +1,7 @@
 import torch
 from cnn2d_alexnet import create_alexnet, create_alexnet_channel_attention, create_alexnet_cbam, create_alexnet_spatial_attention, create_alexnet_self_attention
 from cnn2d_vggnet import VGGNet
+from cnn2d_resnet import ResNet18
 
 def test_cnn2d_models():
     """Test all CNN2D variants"""
@@ -18,7 +19,8 @@ def test_cnn2d_models():
         'AlexNet + Spatial Attention': create_alexnet_spatial_attention(),
         'AlexNet + CBAM': create_alexnet_cbam(),
         'AlexNet + Self-Attention': create_alexnet_self_attention(),
-        'VGGNet': VGGNet(3, 128, 5, 0.4)
+        'VGGNet': VGGNet(3, 128, 5, 0.4),
+        'ResNet18': ResNet18(3, 5, base_filters=16)
     }
     
     print("="*50)

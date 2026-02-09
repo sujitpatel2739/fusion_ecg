@@ -5,13 +5,13 @@ Provides data loading, model definitions, and training utilities.
 
 from . import data
 from . import models
-from . import train
+from . import training
 from . import metrics
 
 __all__ = [
     'data',
     'models',
-    'train',
+    'training',
     'metrics',
 ]
 

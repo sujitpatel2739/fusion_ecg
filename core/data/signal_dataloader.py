@@ -65,7 +65,7 @@ class ECGSignalDataset(Dataset):
         
         return signal, label
     
-def create_signals_dataloaders(
+def create_signal_dataloader(
     image_path,
     labels_path,
     saved_batch_size=32,

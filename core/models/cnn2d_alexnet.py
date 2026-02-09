@@ -7,8 +7,24 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from cnn_attention import ChannelAttention, SpatialAttention, SelfAttentionConv
+from .cnn_attention import ChannelAttention, SpatialAttention, SelfAttentionConv
 
+
+class CNN2DClassifier(nn.Module):
+    def __init__(self, in_channels, out_channels, dropout):
+        super(CNN2DClassifier, self).__init__()
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=dropout),
+            nn.Linear(in_channels, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=dropout),
+            nn.Linear(512, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, out_channels),
+        )
+    def forward(self, x):
+        return self.classifier(x)
+        
 
 # ============= CNN2D (AlexNet-inspired) ==============================================
 class CNN2D(nn.Module):
@@ -79,16 +95,8 @@ class CNN2D(nn.Module):
         # Adaptive pooling to fixed size
         self.avgpool = nn.AdaptiveAvgPool2d((6, 6))
         
-        # Classifier
-        self.classifier = nn.Sequential(
-            nn.Dropout(p=dropout),
-            nn.Linear(c5 * 6 * 6, 512),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=dropout),
-            nn.Linear(512, 256),
-            nn.ReLU(inplace=True),
-            nn.Linear(256, num_classes),
-        )
+        self.classifier = CNN2DClassifier(c5*6*6, num_classes, dropout)
+    
     
     def _build_attention(self, num_channels, attention_type, reduction_ratio):
         """

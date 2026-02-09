@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-
-# ============= VGG Block ==========================================
 class VGGBlock(nn.Module):
     """
     VGG-style block: multiple Conv layers + ReLU + pooling
@@ -28,8 +26,6 @@ class VGGBlock(nn.Module):
     def forward(self, x):
         return self.features_block(x)
 
-
-# ============= VGGNet ==========================================
 class VGGNet(nn.Module):
     """
     VGG-style network for ECG images
@@ -44,12 +40,12 @@ class VGGNet(nn.Module):
         self.block4 = VGGBlock(in_channels*24, in_channels*48, 3)
         self.block5 = VGGBlock(in_channels*48, out_channels, 3)
         
-        self.adaptmaxpool1 = nn.AdaptiveMaxPool2d((6, 6))
+        self.adaptmaxpool1 = nn.AdaptiveMaxPool2d((3, 3))
         
         # Classifier
         self.classifier = nn.Sequential(
             nn.Dropout(p=dropout),
-            nn.Linear(out_channels * 6 * 6, 512),
+            nn.Linear(out_channels * 3 * 3, 512),
             nn.ReLU(inplace=True),
             nn.Dropout(p=dropout),
             nn.Linear(512, 256),
