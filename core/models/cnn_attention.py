@@ -142,8 +142,9 @@ class SelfAttentionConv(nn.Module):
 class CrossAttention(nn.Module):
     """
     Note: This is private and experimental. 
-    Not allowed to embed into training, neither allowed to replicate.
-    Copyright 2026 protected. Sujit Patel.
+    Neither allowed to embed into training, nor allowed to replicate.
+    Copyright protected.
+    Author: Sujit Patel.
     https://github.com/sujitpatel2739/fusion_ecg
 
     Cross-Attention between GAF and MTF images

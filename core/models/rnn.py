@@ -69,7 +69,6 @@ class RNNModel(nn.Module):
         # rnn_out: (batch, seq_len, hidden_size*d)
         # hidden: (batch, hidden_size*d)
         
-        attention_weights = None
         
         # Apply attention if specified
         if self.attention_type == 'additive':
@@ -78,13 +77,14 @@ class RNNModel(nn.Module):
             fc_input = context
             
         elif self.attention_type == 'self':
-            attended, attention_weights = self.attention(rnn_out)
-            # attended: (batch, seq_len, hidden_size*d)
+            attention, attention_weights = self.attention(rnn_out)
+            # attention: (batch, seq_len, hidden_size*d)
             # Use mean pooling over sequence
-            fc_input = attended.mean(dim=1)  # (batch, hidden_size*d)
+            fc_input = attention.mean(dim=1)  # (batch, hidden_size*d)
             
         else:
             # No attention - use hidden state from RNN
+            attention_weights = None
             fc_input = hidden
         
         # Fully connected layers

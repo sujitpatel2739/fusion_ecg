@@ -90,6 +90,13 @@ class SelfAttention(nn.Module):
     
     
 class CrossAttention:
+    """
+    Note: This is private and experimental. 
+    Neither allowed to embed into training, nor allowed to replicate.
+    Copyright protected.
+    Author: Sujit Patel.
+    https://github.com/sujitpatel2739/fusion_ecg
+    """
     def __init__(self, hidden_size):
         self.query = nn.Linear(hidden_size, hidden_size)
         self.key = nn.Linear(hidden_size, hidden_size)

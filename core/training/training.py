@@ -10,8 +10,6 @@ import numpy as np
 from tqdm import tqdm
 import os
 
-from core.metrics.metrics import calculate_metrics
-
 def train_one_epoch(model, dataloader, criterion, optimizer, device):
     """
     Train model for one epoch
@@ -31,7 +29,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
     count = 0
     for x, labels, in tqdm(dataloader, desc="Training"):
         if isinstance(x, (tuple,list)):
-            x = (x[0].to(device), x[1]) # (images, signals): (batch, 3, 224, 224), (batch, 1000, 3)
+            x = (x[0].to(device), x[1].to(device)) # (images, images/signals): (batch, 3, 224, 224), (batch, 1000, 3)
         else:
             x = x.to(device) # (images/signals)
         labels = labels.to(device) # (batch, 5)
@@ -50,7 +48,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
         
     return total_loss / count
 
-def validate_one_epoch(model, val_loader, criterion, device):
+def validate_one_epoch(model, val_loader, criterion, metrics, device):
     """
     Validation phase - calculate LOSS + ALL METRICS
     """
@@ -66,7 +64,7 @@ def validate_one_epoch(model, val_loader, criterion, device):
     with torch.no_grad():
         for x, labels in tqdm(val_loader, desc='Validation'):
             if isinstance(x, (tuple,list)):
-                x = (x[0].to(device), x[1])
+                x = (x[0].to(device), x[1].to(device))
             else:
                 x = x.to(device)
             labels = labels.to(device)
@@ -98,23 +96,25 @@ def validate_one_epoch(model, val_loader, criterion, device):
 
 
     # Calculate ALL metrics using predictions from entire epoch
-    metrics = calculate_metrics(
+    val_metrics = metrics.calculate_metrics(
         all_labels, 
         all_predictions, 
         all_probs
     )
     
-    return avg_loss, metrics
+    return avg_loss, val_metrics
 
 
 def train_model(model,
+                model_name,
                 train_loader,
                 val_loader,
                 criterion,
                 optimizer,
                 schedular,
-                config,
-                save_best = True):
+                metrics,
+                config
+                ):
     """
     Complete training loop
     """
@@ -125,8 +125,11 @@ def train_model(model,
         'specificity': [],
         'precision': [],
         'f1': [],
-        'auc': []
+        'accuracy': [],
+        'auc_roc': [],
+        'auc_pr': [],
     }
+    class_wise_metrics = {cls: {'sensitivity': [], 'specificity': [], 'precision': [], 'f1': [], 'accuracy': [], 'auc_roc': [], 'auc_pr': []} for cls in config.CLASS_NAMES}
     best_val_loss = float('inf')
     for epoch in range(config.NUM_EPOCHS):
         print(f"\nEpoch {epoch+1}/{config.NUM_EPOCHS}")
@@ -135,7 +138,7 @@ def train_model(model,
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, config.DEVICE)
         
         # Validation - get loss + all metrics
-        val_loss, val_metrics = validate_one_epoch(model, val_loader, criterion, config.DEVICE)
+        val_loss, val_metrics = validate_one_epoch(model, val_loader, criterion, metrics, config.DEVICE)
         
         schedular.step(val_loss)
         
@@ -146,16 +149,30 @@ def train_model(model,
         history['specificity'].append(val_metrics['macro_avg']['specificity'])
         history['precision'].append(val_metrics['macro_avg']['precision'])
         history['f1'].append(val_metrics['macro_avg']['f1_score'])
-        history['auc'].append(val_metrics['macro_avg']['auc_roc'])
+        history['accuracy'].append(val_metrics['macro_avg']['accuracy'])
+        history['auc_roc'].append(val_metrics['macro_avg']['auc_roc'])
+        history['auc_pr'].append(val_metrics['macro_avg']['auc_pr'])
         
+        for cls in config.CLASS_NAMES:
+            class_wise_metrics[cls]['sensitivity'].append(val_metrics[cls]['sensitivity'])
+            class_wise_metrics[cls]['specificity'].append(val_metrics[cls]['specificity'])
+            class_wise_metrics[cls]['precision'].append(val_metrics[cls]['precision'])
+            class_wise_metrics[cls]['f1'].append(val_metrics[cls]['f1_score'])
+            class_wise_metrics[cls]['accuracy'].append(val_metrics[cls]['accuracy'])
+            class_wise_metrics[cls]['auc_roc'].append(val_metrics[cls]['auc_roc'])
+            class_wise_metrics[cls]['auc_pr'].append(val_metrics[cls]['auc_pr'])
+
         # Print summary
         print(f"Train Loss: {train_loss:.4f}")
         print(f"Val Loss: {val_loss:.4f}")
         print(f"Val Metrics (Macro):")
         print(f"  Sensitivity: {val_metrics['macro_avg']['sensitivity']:.4f}")
         print(f"  Specificity: {val_metrics['macro_avg']['specificity']:.4f}")
+        print(f"  Precision: {val_metrics['macro_avg']['precision']:.4f}")
         print(f"  F1-Score: {val_metrics['macro_avg']['f1_score']:.4f}")
-        print(f"  AUC: {val_metrics['macro_avg']['auc_roc']:.4f}")
+        print(f"  Accuracy: {val_metrics['macro_avg']['accuracy']:.4f}")
+        print(f"  AUC-ROC: {val_metrics['macro_avg']['auc_roc']:.4f}")
+        print(f"  AUC-PR: {val_metrics['macro_avg']['auc_pr']:.4f}")
         
         # Save best model
         if val_loss < best_val_loss:
@@ -163,8 +180,8 @@ def train_model(model,
             best_epoch = epoch
             patience_counter = 0
             
-            if save_best == True:
-                save_path = os.path.join(config.SAVE_DIR, f'{model.__class__.__name__}_best.pth')
+            if config.SAVE_BEST == True:
+                save_path = os.path.join(config.SAVE_DIR, f'{model_name}_best.pth')
                 torch.save({
                     'epoch': best_epoch,
                     'model_state_dict': model.state_dict(),
@@ -174,7 +191,7 @@ def train_model(model,
                     'history': history
                 }, save_path)
             
-            print(f"✓ Saved best model (Val Loss: {val_loss:.4f})")
+                print(f"✓ Saved best model (Val Loss: {val_loss:.4f})")
         else:
             patience_counter += 1
         
@@ -190,4 +207,4 @@ def train_model(model,
         print(f"Best val loss: {best_val_loss:.4f}")
         print(f"{'='*45}")
     
-    return history
+    return history, class_wise_metrics
