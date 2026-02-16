@@ -9,7 +9,6 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from config import Config
 from core.metrics.metrics import ECGMetrics, TrainingVisualizer
-import pickle
 # Importing DataLoaders
 from core.data.signal_dataloader import create_signal_dataloader
 # Importing models
@@ -32,13 +31,7 @@ def main():
     print(f"Epochs: {config.NUM_EPOCHS}")
     print(f"Learning rate: {config.LEARNING_RATE}")
     
-    # Use the configured batch size for both saved batches and DataLoader
-    SAVED_BATCH_SIZE = config.BATCH_SIZE
-    DATALOADER_BATCH_SIZE = config.BATCH_SIZE
-    NUM_WORKERS = 4
-    
     config = Config()
-
     # Load data
     print("\nLoading data...")
     print("Creating signals dataloaders...")
@@ -46,10 +39,10 @@ def main():
     train_dataloader = create_signal_dataloader(
         image_path=config.TRAIN_SIGNAL_PATH,
         labels_path=config.TRAIN_LABEL_PATH,
-        saved_batch_size=SAVED_BATCH_SIZE,
-        batch_size=DATALOADER_BATCH_SIZE,
+        saved_batch_size=config.SAVED_BATCH_SIZE,
+        batch_size=config.BATCH_SIZE,
         shuffle=True,
-        num_workers=NUM_WORKERS
+        num_workers=config.NUM_WORKERS
     )
     data_iter = iter(train_dataloader)
     batch0 = next(data_iter)
@@ -57,14 +50,13 @@ def main():
     batch_size_report = batch0[0].size(0) if hasattr(batch0[0], 'size') else len(batch0[0])
     print(f"✓ Train batches: {len(train_dataloader)}")
     print(f"✓ Batch size: {batch_size_report}")
-
     val_dataloader = create_signal_dataloader(
         image_path=config.VAL_SIGNAL_PATH,
         labels_path=config.VAL_LABEL_PATH,
-        saved_batch_size=SAVED_BATCH_SIZE,
-        batch_size=DATALOADER_BATCH_SIZE,
+        saved_batch_size=config.SAVED_BATCH_SIZE,
+        batch_size=config.BATCH_SIZE,
         shuffle=False,
-        num_workers=NUM_WORKERS
+        num_workers=config.NUM_WORKERS
     )
     data_iter = iter(val_dataloader)
     batch0 = next(data_iter)
@@ -97,10 +89,9 @@ def main():
             num_layers=config.NUM_LAYERS,
             dropout=config.DROPOUT,
             attention_type='self'
-        ),
-        'CRNN_1D': CRNN_1D(3, 5, 'gru', 128, 2, True, 0.4)  
+        )
+        # 'CRNN_1D': CRNN_1D(3, 5, 'gru', 128, 2, True, 0.4)
     }
-
     # Train each model
     histories = []
     model_names = []
@@ -108,11 +99,12 @@ def main():
     # Loss function (Binary Cross Entropy for multi-label)
     criterion = nn.BCEWithLogitsLoss()
     metrics = ECGMetrics(config.CLASS_NAMES)
-    viz = TrainingVisualizer(config.CLASS_NAMES, save_dir=config.SAVE_DIR)
+    viz = TrainingVisualizer(config.CLASS_NAMES)
     
     for name, model in models_to_train.items():
         print(f"Training Model: {name}")
         # Optimizer
+        model = model.to(config.DEVICE)
         optimizer = optim.Adam(model.parameters(),
                                lr=config.LEARNING_RATE,
                                weight_decay=config.WEIGHT_DECAY)
@@ -121,9 +113,10 @@ def main():
             optimizer, mode='min', factor=0.5, patience=3,
             min_lr=1e-6
         )
-        
+    
         history, class_wise_metrics = train_model(
             model,
+            name,
             train_dataloader,
             val_dataloader,
             criterion,
@@ -131,19 +124,18 @@ def main():
             scheduler,
             metrics,
             config,
-            save_best=True
         )
         histories.append(history)
         model_names.append(name)
-        
+    
         # Plot history
-        viz.plot_loss_curves(history, f'loss_{name}.png', name)
-        viz.plot_macro_metrics(history, f'macro_metrics_{name}.png', name)
-        viz.plot_training_summary(history, f'summary_{name}.png', name)
-        
+        viz.plot_loss_curves(history, f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_loss_currves.png', name)
+        viz.plot_macro_metrics(history, f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_macro_metrics.png', name)
+        viz.plot_training_summary(history, f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_training_history.png', name)
+    
         # Per-class metrics (requires class_wise_metrics)
-        viz.plot_per_class_metric(class_wise_metrics, metric='f1', class_name='MI')  # Single class
-        viz.plot_per_class_metric(class_wise_metrics, metric='sensitivity')  # All classes
+        viz.plot_per_class_metric(class_wise_metrics, save_path = f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_per_class_metric.png', name=name)
+        viz.plot_per_class_metric(class_wise_metrics, )  # All classes
     
     # Save histories to disk for future analysis
     print("\nSaving training histories...")
