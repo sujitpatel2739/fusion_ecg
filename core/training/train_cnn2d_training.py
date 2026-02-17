@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import matplotlib.pyplot as plt
 import os
 
 import sys
@@ -92,11 +91,12 @@ def main():
     # Loss function (Binary Cross Entropy for multi-label)
     criterion = nn.BCEWithLogitsLoss()
     metrics = ECGMetrics(config.CLASS_NAMES)
-    viz = TrainingVisualizer(config.CLASS_NAMES, save_dir=config.SAVE_DIR)
+    viz = TrainingVisualizer(config.CLASS_NAMES)
     
     for name, model in models_to_train.items():
         print(f"Training Model: {name}")
         # Optimizer
+        model = model.to(config.DEVICE)
         optimizer = optim.Adam(model.parameters(),
                                lr=config.LEARNING_RATE,
                                weight_decay=config.WEIGHT_DECAY)
@@ -105,9 +105,10 @@ def main():
             optimizer, mode='min', factor=0.5, patience=3,
             min_lr=1e-6
         )
-        
+    
         history, class_wise_metrics = train_model(
             model,
+            name,
             train_dataloader,
             val_dataloader,
             criterion,
@@ -115,19 +116,18 @@ def main():
             scheduler,
             metrics,
             config,
-            save_best=True
         )
         histories.append(history)
         model_names.append(name)
-        
+    
         # Plot history
-        viz.plot_loss_curves(history, f'loss_{name}.png', name)
-        viz.plot_macro_metrics(history, f'macro_metrics_{name}.png', name)
-        viz.plot_training_summary(history, f'summary_{name}.png', name)
-        
+        viz.plot_loss_curves(history, f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_loss_currves.png', name)
+        viz.plot_macro_metrics(history, f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_macro_metrics.png', name)
+        viz.plot_training_summary(history, f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_training_history.png', name)
+    
         # Per-class metrics (requires class_wise_metrics)
-        viz.plot_per_class_metric(class_wise_metrics, metric='f1', class_name='MI')  # Single class
-        viz.plot_per_class_metric(class_wise_metrics, metric='sensitivity')  # All classes
+        viz.plot_per_class_metric(class_wise_metrics, save_path = f'{config.TRAIN_HISTORY_SAVE_PATH}/{name}_per_class_metric.png', name=name)
+        viz.plot_per_class_metric(class_wise_metrics, )  # All classes
     
     
     # Save histories to disk for future analysis
